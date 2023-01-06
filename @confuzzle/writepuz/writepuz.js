@@ -77,6 +77,64 @@ function buildBody(puz) {
     return puz_common.concatBytes(body, buildStrings(puz));
 }
 
+function buildExtras(puz) {
+  // Currently only supports rebus and circled/shaded cells
+  const p = puz_common.PUZ_EXTRAS_CONSTANTS;
+  let markup = [];
+  let rebusLocations = [];
+  let rebusSolutions = [];
+
+  if (puz.markup) {
+    markup = new Uint8Array(p.lengths.HEADER + puz.markup.length + 1);
+    markup.set(iconv.encode(p.titles.MARKUP, "utf-8"), p.offsets.TITLE);
+    puz_common.writeUInt16LE(markup, p.offsets.LENGTH, puz.markup.length);
+    puz_common.writeUInt16LE(markup, p.offsets.CHECKSUM, checksum(puz.markup));
+    for (let i = 0; i < puz.markup.length; i++) {
+      markup[i + p.offsets.DATA] = puz.markup[i];
+    }
+    // Each extra section ends in a null byte
+    markup[markup.length - 1] = 0;
+  }
+
+  if (puz.rebus) {
+    let rebusCount = 0;
+    const rebusLocationBytes = new Uint8Array(puz.rebus.length);
+    let rebusSolutionString = "";
+    for (let i = 0; i < puz.rebus.length; i++) {
+      if (puz.rebus[i]) {
+        rebusLocationBytes[i] = rebusCount + 2;
+        // Format: xx:rebus;
+        // where xx is the 2-digit rebus index (left padded with a space if necessary)
+        // and rebus is the rebus value
+        // Note that rebus indices are 1-indexed (for ease of comparison with output from another program)
+        rebusSolutionString += String(rebusCount + 1).padStart(2, ' ') + ":" + puz.rebus[i] + ";";
+        // TODO: if rebus count hits triple digits, we should probably throw an exception.
+        rebusCount++;
+      } else {
+        rebusLocationBytes[i] = 0;
+      }
+    }
+
+    rebusLocations = new Uint8Array(p.lengths.HEADER + puz.rebus.length + 1);
+    rebusLocations.set(iconv.encode(p.titles.REBUS_LOCATIONS, "utf-8"), p.offsets.TITLE);
+    puz_common.writeUInt16LE(rebusLocations, p.offsets.LENGTH, puz.rebus.length);
+    puz_common.writeUInt16LE(rebusLocations, p.offsets.CHECKSUM, checksum(rebusLocationBytes));
+    rebusLocations.set(rebusLocationBytes, p.offsets.DATA);
+    rebusLocations[rebusLocations.length - 1] = 0;
+
+    rebusSolutions = new Uint8Array(p.lengths.HEADER + rebusSolutionString.length + 1);
+    rebusSolutions.set(iconv.encode(p.titles.REBUS_CONTENTS, "utf-8"), p.offsets.TITLE);
+    puz_common.writeUInt16LE(rebusSolutions, p.offsets.LENGTH, rebusSolutionString.length);
+    puz_common.writeUInt16LE(rebusSolutions, p.offsets.CHECKSUM, checksum(rebusSolutionString));
+    rebusSolutions.set(iconv.encode(rebusSolutionString, "utf-8"), p.offsets.DATA);
+    rebusSolutions[rebusSolutions.length - 1] = 0;
+  }
+  extras = puz_common.concatBytes([], markup);
+  extras = puz_common.concatBytes(extras, rebusLocations);
+  extras = puz_common.concatBytes(extras, rebusSolutions);
+  return extras;
+}
+
 function computeChecksums(puz, header) {
     const p = puz_common.PUZ_HEADER_CONSTANTS;
     const h = checksum(header.slice(p.offsets.WIDTH, p.lengths.HEADER));
@@ -119,7 +177,9 @@ function buildHeader(puz) {
 }
 
 function writepuz(puz) {
-    return puz_common.concatBytes(buildHeader(puz), buildBody(puz));
+    let puzBytes = puz_common.concatBytes(buildHeader(puz), buildBody(puz));
+    puzBytes = puz_common.concatBytes(puzBytes, buildExtras(puz));
+    return puzBytes;
 }
 
 module.exports = {

@@ -34,6 +34,36 @@ const PUZ_HEADER_CONSTANTS = {
     },
 };
 
+const PUZ_EXTRAS_CONSTANTS = {
+    offsets: {
+        TITLE: 0x00,
+        LENGTH: 0x04,
+        CHECKSUM: 0x06,
+        DATA: 0x08
+    },
+    lengths: {
+        TITLE: 0x04,
+        LENGTH: 0x02,
+        CHECKSUM: 0x02,
+        HEADER: 0x08
+    },
+    titles: {
+      REBUS_LOCATIONS: 'GRBS',
+      REBUS_CONTENTS: 'RTBL',
+      TIMER_DATA: 'LTIM',
+      MARKUP: 'GEXT',
+      USER_REBUSES: 'RUSR'
+    }
+};
+
+const MARKUP_BYTES = {
+  DEFAULT: 0x00,
+  PREV_INCORRECT: 0x10,
+  CUR_INCORRECT: 0x20,
+  GIVEN: 0x40,
+  CIRCLED: 0x80
+}
+
 // names of string fields
 const PUZ_STRING_FIELDS = ['title', 'author', 'copyright'];
 
@@ -121,7 +151,9 @@ function writeUInt16LE(buf, offset, val) {
 module.exports = {
     PUZ_ENCODING: PUZ_ENCODING,
     PUZ_HEADER_CONSTANTS: PUZ_HEADER_CONSTANTS,
+    PUZ_EXTRAS_CONSTANTS: PUZ_EXTRAS_CONSTANTS,
     PUZ_STRING_FIELDS: PUZ_STRING_FIELDS,
+    MARKUP_BYTES: MARKUP_BYTES,
     puzDecode: puzDecode,
     puzEncode: puzEncode,
     puzState: puzState,
